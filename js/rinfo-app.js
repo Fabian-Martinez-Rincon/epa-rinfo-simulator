@@ -150,6 +150,11 @@
     followRobot: true, sizeBeforeFollow: 25,
     viewMode: '2d',
     running: false,
+    // true entre el fin de una corrida y la proxima edicion/carga: la vista
+    // idle muestra liveCity (el resultado, con flores/papeles ya tomados) en
+    // vez de city, que se mantiene intacta para que "Ejecutar" de nuevo repita
+    // el mismo escenario en vez de seguir vaciando la ciudad a cada click.
+    finished: false,
     anim: { fromAv: 1, fromCa: 1, toAv: 1, toCa: 1, startedAt: 0, duration: 220 }
   };
 
@@ -197,6 +202,7 @@
       sim.city.set(k, { flor: v.flor || 0, papel: v.papel || 0 });
     });
     sim.liveCity = cloneCity(sim.city);
+    sim.finished = false;
     $('#bagFlor').value = sol.demoBagFlor || 0;
     $('#bagPapel').value = sol.demoBagPapel || 0;
     sim.liveRobot = { av: 1, ca: 1, dir: 'N', bagFlor: sol.demoBagFlor || 0, bagPapel: sol.demoBagPapel || 0 };
@@ -838,7 +844,7 @@
   function redraw() {
     var robot = sim.running ? renderPosition() : { av: sim.liveRobot.av, ca: sim.liveRobot.ca, dir: sim.liveRobot.dir, moving: false, stepT: 0 };
     if (sim.followRobot) centerOn(robot.av, robot.ca);
-    drawCity(sim.running ? sim.liveCity : sim.city, robot);
+    drawCity((sim.running || sim.finished) ? sim.liveCity : sim.city, robot);
     refreshReadout(sim.liveRobot);
   }
 
@@ -854,6 +860,7 @@
     else if (mode === 'papel') { setCell(sim.city, c.av, c.ca, { flor: cur.flor, papel: (cur.papel + 1) % 6 }); }
     else { setCell(sim.city, c.av, c.ca, { flor: (cur.flor + 1) % 6, papel: cur.papel }); }
     sim.liveCity = cloneCity(sim.city);
+    sim.finished = false;
     redraw();
   }
 
@@ -864,9 +871,10 @@
       }
     }
     sim.liveCity = cloneCity(sim.city);
+    sim.finished = false;
     redraw();
   }
-  function clearCity() { sim.city = new Map(); sim.liveCity = new Map(); redraw(); }
+  function clearCity() { sim.city = new Map(); sim.liveCity = new Map(); sim.finished = false; redraw(); }
 
   function panBy(dAv, dCa) {
     if (sim.followRobot) { sim.followRobot = false; $('#followToggleWrap').classList.remove('is-on'); $('#followToggle').checked = false; }
@@ -893,7 +901,7 @@
   function stopAnimation() {
     if (sim.stepTimer) { clearTimeout(sim.stepTimer); sim.stepTimer = null; }
     if (sim.rafId) { cancelAnimationFrame(sim.rafId); sim.rafId = null; }
-    sim.city = cloneCity(sim.liveCity);
+    if (sim.running) sim.finished = true;
     sim.running = false;
     $('#runBtn').disabled = false; $('#stopBtn').disabled = true; $('#skipBtn').disabled = true;
     redraw();
